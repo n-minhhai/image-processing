@@ -16,7 +16,7 @@ public class Demo extends Component implements ActionListener {
     //************************************
     private BufferedImage bi, biFiltered;   // the input image saved as bi;//
     int w, h;
-    static String image_1 = "images/Barbara.bmp";
+    static String image_1 = "images/Cameraman.bmp";
     static String image_2 = "images/alpha.bmp";
 
     String descs[] = {
@@ -62,12 +62,13 @@ public class Demo extends Component implements ActionListener {
         "Histogram Std",
         "Simple Thresholding",
         "Automated Thresholding",
+        "Adaptive Thresholding",
     };
  
     double power = 0.4; // Power-Law
     int shift_value = 50;
     double scale_value = 0.5;
-    int kbit = 3; // BitPlane
+    int kbit = 5; // BitPlane
     double probability = 0.3; // Salt-and-Pepper
 
     // window sizes
@@ -78,6 +79,9 @@ public class Demo extends Component implements ActionListener {
     // threshold value for threhsolding
     int threshold = 100;
     int automated_threshold = 1;
+    int adaptive_windowSize = 5;
+    int adaptive_a = 1;
+    double adaptive_b = 0.9;
 
 
 
@@ -1560,6 +1564,73 @@ public class Demo extends Component implements ActionListener {
         return convertToBimage(ResultImage);
     }
 
+
+    public BufferedImage adaptive_thresholding(BufferedImage img, int windowSize, int a, double b){
+        int width = img.getWidth();
+        int height = img.getHeight();
+
+        int[][][] ImageArray = convertToArray(img);
+        int[][][] ResultImage = new int[width][height][4];
+
+
+        for (int y=windowSize-2; y<height-1; y++){
+            for (int x=windowSize-2; x<width-1; x++){
+
+                double[] mean = new double[3];
+                double[] std = new double[3];
+
+                mean[0] = 0;
+                mean[1] = 0;
+                mean[2] = 0;
+                std[0] = 0;
+                std[1] = 0;
+                std[2] = 0;
+
+                for (int s=-(windowSize-2); s<=1; s++){
+                    for(int t=-(windowSize-2); t<=1; t++){
+                        mean[0] += ImageArray[x+s][y+t][1];
+                        mean[1] += ImageArray[x+s][y+t][2];
+                        mean[2] += ImageArray[x+s][y+t][3];
+                    }
+                }
+                mean[0] = (mean[0] / (windowSize*windowSize));
+                mean[1] = (mean[1] / (windowSize*windowSize));
+                mean[2] = (mean[2] / (windowSize*windowSize));
+                
+                for (int s=-(windowSize-2); s<=1; s++){
+                    for(int t=-(windowSize-2); t<=1; t++){
+                        std[0] += Math.pow((ImageArray[x+s][y+t][1]-mean[0]),2);
+                        std[1] += Math.pow((ImageArray[x+s][y+t][2]-mean[1]),2);
+                        std[2] += Math.pow((ImageArray[x+s][y+t][3]-mean[2]),2);
+                    }
+                }
+                std[0] = Math.sqrt(std[0] / (windowSize*windowSize));
+                std[1] = Math.sqrt(std[1] / (windowSize*windowSize));
+                std[2] = Math.sqrt(std[2] / (windowSize*windowSize));
+
+                if (ImageArray[x][y][1] <= a*std[0] | ImageArray[x][y][1] <= b*mean[0]){
+                    ResultImage[x][y][1] = 0;
+                }
+                if (ImageArray[x][y][2] <= a*std[1] | ImageArray[x][y][2] <= b*mean[1]){
+                    ResultImage[x][y][2] = 0;
+                }
+                if (ImageArray[x][y][3] <= a*std[2] | ImageArray[x][y][3] <= b*mean[2]){
+                    ResultImage[x][y][3] = 0;
+                }
+                if (ImageArray[x][y][1] > a*std[0] && ImageArray[x][y][1] > b*mean[0]){
+                    ResultImage[x][y][1] = 255; 
+                }
+                if (ImageArray[x][y][2] > a*std[1] && ImageArray[x][y][2] > b*mean[1]){
+                    ResultImage[x][y][2] = 255;
+                }
+                if (ImageArray[x][y][3] > a*std[2] && ImageArray[x][y][3] > b*mean[2]){
+                    ResultImage[x][y][3] = 255;
+                }
+            }
+
+        }
+        return convertToBimage(ResultImage);
+    }
     //************************************
 
 
@@ -1785,6 +1856,10 @@ public class Demo extends Component implements ActionListener {
         case 41:
                 lastImage = getLastImage();
                 biFiltered = automated_thresholding(biFiltered, automated_threshold);
+                return;
+        case 42:
+                lastImage = getLastImage();
+                biFiltered = adaptive_thresholding(biFiltered, adaptive_windowSize, adaptive_a, adaptive_b);
                 return;
         //************************************
 
