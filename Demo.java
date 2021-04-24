@@ -17,7 +17,41 @@ public class Demo extends Component implements ActionListener {
     private BufferedImage bi, biFiltered;   // the input image saved as bi;//
     int w, h;
     static String image_1 = "images/Cameraman.bmp";
-    static String image_2 = "images/alpha.bmp";
+    static String image_2 = "images/alpha2.bmp";
+
+    
+    double scale_value = 0.5;
+    int shift_value = 50;
+
+    // Maximum shift value for random shift (this will result in random shift -100 to 100)
+    int maxShift = 200; 
+    
+    // Power-Law parameter
+    double power = 0.4; 
+
+    // Number of BitPlanes
+    int kbit = 7; 
+
+    // Salt-and-Pepper probability (higher probability means more salt and pepper)
+    double probability = 0.2; 
+
+    // window sizes for filtering
+    int minFilterWindow = 3;
+    int maxFilterWindow = 3;
+    int midPointFilterWindow = 3;
+
+    // threshold value for threhsolding
+
+    // Threshold for simple thresholding
+    int threshold = 100;
+
+    // Determine the difference value for stopping automated threshold algorithm
+    int automated_threshold = 1;
+
+    // Parameters for adaptive thresholding
+    int adaptive_windowSize = 5;
+    int adaptive_a = 1;
+    double adaptive_b = 0.9;
 
     String descs[] = {
         "Original", 
@@ -63,69 +97,57 @@ public class Demo extends Component implements ActionListener {
         "Simple Thresholding",
         "Automated Thresholding",
         "Adaptive Thresholding",
+        "Do Nothing",
     };
- 
-    double power = 0.4; // Power-Law
-    int shift_value = 50;
-    double scale_value = 0.5;
-    int kbit = 5; // BitPlane
-    double probability = 0.3; // Salt-and-Pepper
-
-    // window sizes
-    int minFilterWindow = 3;
-    int maxFilterWindow = 3;
-    int midPointFilterWindow = 3;
-
-    // threshold value for threhsolding
-    int threshold = 100;
-    int automated_threshold = 1;
-    int adaptive_windowSize = 5;
-    int adaptive_a = 1;
-    double adaptive_b = 0.9;
-
 
 
     BufferedImage lastImage = null;
     int opIndex;  //option index for 
     int lastOp;
 
+    // Averaging mask
     double[][] mean_mask = new double[][]{
         {(double)1/9, (double)1/9, (double)1/9},
         {(double)1/9, (double)1/9, (double)1/9},
         {(double)1/9, (double)1/9, (double)1/9},
     };
 
+    // Weighted Averaging
     double[][] weighted_mean_mask = new double[][]{
         {(double)1/16, (double)2/16, (double)1/16},
         {(double)2/16, (double)4/16, (double)2/16},
         {(double)1/16, (double)2/16, (double)1/16},
     };
 
+    // 4-Neighbor Laplacian
     double[][] Laplacian_4 = new double[][]{
         {0, -1, 0},
         {-1, 4, -1},
         {0, -1, 0},
     };
 
-
+    // 8-Neighbor Laplacian
     double[][] Laplacian_8 = new double[][]{
         {-1, -1, -1},
         {-1, 8, -1},
         {-1, -1, -1},
     };
 
+    // 4-Neighbor Laplacian Enhancement
     double[][] LaplacianEnhancement_4 = new double[][]{
         {0, -1, 0},
         {-1, 5, -1},
         {0, -1, 0},
     };
 
+    // 8-Neighbor Laplacian Enhancement
     double[][] LaplacianEnhancement_8 = new double[][]{
         {-1, -1, -1},
         {-1, 9, -1},
         {-1, -1, -1},
     };
 
+    // Roberts Masks
     double[][] Roberts_1 = new double[][]{
         {0, 0, 0},
         {0, 0, -1},
@@ -138,6 +160,7 @@ public class Demo extends Component implements ActionListener {
         {0, 0, 1},
     };
 
+    // Sobel Masks
     double[][] Sobel_X = new double[][]{
         {-1, 0, 1},
         {-2, 0, 2},
@@ -150,6 +173,7 @@ public class Demo extends Component implements ActionListener {
         {1, 2, 1},
     };
 
+    // Gaussian Mask
     double[][] Gaussian = new double[][]{
         {(double)1/273, (double)4/273, (double)7/273, (double)4/273, (double)1/273},
         {(double)4/273, (double)16/273, (double)26/273, (double)16/273, (double)4/273},
@@ -158,6 +182,7 @@ public class Demo extends Component implements ActionListener {
         {(double)1/273, (double)4/273, (double)7/273, (double)4/273, (double)1/273}
     };
 
+    // Laplacian of Gaussian
     double[][] LoG = new double[][]{
         {0, 0, -1, 0, 0},
         {0, -1, -2, -1, 0},
@@ -297,37 +322,6 @@ public class Demo extends Component implements ActionListener {
 
     //************************************
     //  Your turn now:  Add more function below
-
-
-
-    // Display 2 images
-    public BufferedImage TwoImages(String image_1, String image_2){
-        BufferedImage joined_image = null;
-        try {
-            BufferedImage img1 = ImageIO.read(new File(image_1));
-            BufferedImage img2 = ImageIO.read(new File(image_2));
-    
-            int wid = img1.getWidth()+img2.getWidth();
-            int height = Math.max(img1.getHeight(),img2.getHeight());
-
-            // Join two images
-            joined_image = new BufferedImage(wid,height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g2 = joined_image.createGraphics();
-            Color oldColor = g2.getColor();
-
-            g2.setPaint(Color.WHITE);
-            g2.fillRect(0, 0, wid, height);
-
-            g2.drawImage(img1, null, 0, 0);
-            g2.drawImage(img2, null, img1.getWidth(), 0);
-            g2.dispose();
-            return joined_image;
-        } catch (IOException e) {
-            System.out.println("Image could not be read");
-            System.exit(1);
-        }
-        return joined_image;
-    }
     
     // Display second image
     public void displaySecondImage(String img){
@@ -353,7 +347,7 @@ public class Demo extends Component implements ActionListener {
         f.setVisible(true);
     }
 
-    // Return last image
+    // Return last image (for undo)
     public BufferedImage getLastImage(){
         if (biFiltered==null){
             return bi;
@@ -372,26 +366,29 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Rescale
                 ImageArray[x][y][1] = (int)(ImageArray[x][y][1]*factor);  //r
                 ImageArray[x][y][2] = (int)(ImageArray[x][y][2]*factor);  //g
                 ImageArray[x][y][3] = (int)(ImageArray[x][y][3]*factor);  //b
 
+                // Set boundaries between 0 and 255
                 if (ImageArray[x][y][1] > 255){
                     ImageArray[x][y][1] = 255;
                 }
-                else if (ImageArray[x][y][1] < 0){
+                if (ImageArray[x][y][1] < 0){
                     ImageArray[x][y][1] = 0;
                 }
                 if (ImageArray[x][y][2] > 255){
                     ImageArray[x][y][2] = 255;
                 }
-                else if (ImageArray[x][y][2] < 0){
+                if (ImageArray[x][y][2] < 0){
                     ImageArray[x][y][2] = 0;
                 }
                 if (ImageArray[x][y][3] > 255){
                     ImageArray[x][y][3] = 255;
                 }
-                else if (ImageArray[x][y][3] < 0){
+                if (ImageArray[x][y][3] < 0){
                     ImageArray[x][y][3] = 0;
                 }
             }
@@ -410,26 +407,29 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Value Shifting
                 ImageArray[x][y][1] = (int)(ImageArray[x][y][1]+shift);  //r
                 ImageArray[x][y][2] = (int)(ImageArray[x][y][2]+shift);  //g
                 ImageArray[x][y][3] = (int)(ImageArray[x][y][3]+shift);  //b
 
+                // Set boundaries between 0 and 255
                 if (ImageArray[x][y][1] > 255){
                     ImageArray[x][y][1] = 255;
                 }
-                else if (ImageArray[x][y][1] < 0){
+                if (ImageArray[x][y][1] < 0){
                     ImageArray[x][y][1] = 0;
                 }
                 if (ImageArray[x][y][2] > 255){
                     ImageArray[x][y][2] = 255;
                 }
-                else if (ImageArray[x][y][2] < 0){
+                if (ImageArray[x][y][2] < 0){
                     ImageArray[x][y][2] = 0;
                 }
                 if (ImageArray[x][y][3] > 255){
                     ImageArray[x][y][3] = 255;
                 }
-                else if (ImageArray[x][y][3] < 0){
+                if (ImageArray[x][y][3] < 0){
                     ImageArray[x][y][3] = 0;
                 }
             }
@@ -439,15 +439,13 @@ public class Demo extends Component implements ActionListener {
 
     // Lab2 exercise 3
     // Value shifting and rescaling
-    public BufferedImage random_shift(BufferedImage img){
+    public BufferedImage random_shift(BufferedImage img, int maxShift){
         int width = img.getWidth();
         int height = img.getHeight();
 
         int[][][] ImageArray = convertToArray(img);          //  Convert the image to array
 
         Random rand = new Random();
-        int upperShift = 100;
-        int upperScale = 2;
 
         int min_r = 255;
         int min_g = 255;
@@ -460,13 +458,15 @@ public class Demo extends Component implements ActionListener {
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
 
-                int randomShift = rand.nextInt(upperShift);
-                double randomScale = 2 * rand.nextDouble();
+                // Random integer for shifting (maxshift=100 yields random shift between -50 and 50)
+                int randomShift = rand.nextInt(maxShift + maxShift) - maxShift;
 
-                ImageArray[x][y][1] = (int)randomScale * (ImageArray[x][y][1]+randomShift);  //r
-                ImageArray[x][y][2] = (int)randomScale * (ImageArray[x][y][2]+randomShift);  //g
-                ImageArray[x][y][3] = (int)randomScale * (ImageArray[x][y][3]+randomShift);  //b
+                // Apply random value shift
+                ImageArray[x][y][1] = (int)(ImageArray[x][y][1]+randomShift);  //r
+                ImageArray[x][y][2] = (int)(ImageArray[x][y][2]+randomShift);  //g
+                ImageArray[x][y][3] = (int)(ImageArray[x][y][3]+randomShift);  //b
 
+                // Keep track of max and min values for each channel
                 if (ImageArray[x][y][1] > max_r){
                     max_r = ImageArray[x][y][1];
                 }
@@ -490,6 +490,7 @@ public class Demo extends Component implements ActionListener {
             }
         }
         
+        // Rescale pixel values according to min and max
         for (int y=0; y<height; y++){
             for (int x=0; x<width; x++){
                 ImageArray[x][y][1] = (255*(ImageArray[x][y][1]-min_r)) / (max_r-min_r);
@@ -519,10 +520,13 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Perform Addition
                 ResultImage[x][y][1] = ImageArray1[x][y][1] + ImageArray2[x][y][1];
                 ResultImage[x][y][2] = ImageArray1[x][y][2] + ImageArray2[x][y][2];
                 ResultImage[x][y][3] = ImageArray1[x][y][3] + ImageArray2[x][y][3];
 
+                // Keep track of min and max values for each channel
                 if (ResultImage[x][y][1] > max_r){
                     max_r = ResultImage[x][y][1];
                 }
@@ -546,6 +550,7 @@ public class Demo extends Component implements ActionListener {
             }
         }
 
+        // Rescale pixel values according to min and max
         for (int y=0; y<height; y++){
             for (int x=0; x<width; x++){
                 ResultImage[x][y][1] = (255*(ResultImage[x][y][1]-min_r)) / (max_r-min_r);
@@ -575,6 +580,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply subtraction
                 ResultImage[x][y][1] = Math.abs(ImageArray1[x][y][1] - ImageArray2[x][y][1]);
                 ResultImage[x][y][2] = Math.abs(ImageArray1[x][y][2] - ImageArray2[x][y][2]);
                 ResultImage[x][y][3] = Math.abs(ImageArray1[x][y][3] - ImageArray2[x][y][3]);
@@ -602,6 +609,7 @@ public class Demo extends Component implements ActionListener {
             }
         }
 
+        // Rescale pixel values according to min and max and check for 0 division
         for (int y=0; y<height; y++){
             for (int x=0; x<width; x++){
                 if (max_r-min_r == 0){
@@ -645,6 +653,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply multiplication
                 ResultImage[x][y][1] = ImageArray1[x][y][1] * ImageArray2[x][y][1];
                 ResultImage[x][y][2] = ImageArray1[x][y][2] * ImageArray2[x][y][2];
                 ResultImage[x][y][3] = ImageArray1[x][y][3] * ImageArray2[x][y][3];
@@ -701,7 +711,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
-                // check for divide by 0
+
+                // check for division by 0
                 if (ImageArray2[x][y][1] == 0){
                     ImageArray2[x][y][1] = 1;
                 }
@@ -711,6 +722,8 @@ public class Demo extends Component implements ActionListener {
                 if (ImageArray2[x][y][3] == 0){
                     ImageArray2[x][y][3] = 1;
                 }
+
+                // Apply division
                 ResultImage[x][y][1] = ImageArray1[x][y][1] / ImageArray2[x][y][1];
                 ResultImage[x][y][2] = ImageArray1[x][y][2] / ImageArray2[x][y][2];
                 ResultImage[x][y][3] = ImageArray1[x][y][3] / ImageArray2[x][y][3];
@@ -758,6 +771,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply bitwise NOT
                 ImageArray[x][y][1] = (~ImageArray[x][y][1])&0xFF;  //r
                 ImageArray[x][y][2] = (~ImageArray[x][y][2])&0xFF;  //g
                 ImageArray[x][y][3] = (~ImageArray[x][y][3])&0xFF;  //b
@@ -778,6 +793,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply Bitwise AND
                 ResultImage[x][y][1] = ImageArray1[x][y][1] & ImageArray2[x][y][1];
                 ResultImage[x][y][2] = ImageArray1[x][y][2] & ImageArray2[x][y][2];
                 ResultImage[x][y][3] = ImageArray1[x][y][3] & ImageArray2[x][y][3];
@@ -797,6 +814,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply Bitwise OR
                 ResultImage[x][y][1] = ImageArray1[x][y][1] | ImageArray2[x][y][1];
                 ResultImage[x][y][2] = ImageArray1[x][y][2] | ImageArray2[x][y][2];
                 ResultImage[x][y][3] = ImageArray1[x][y][3] | ImageArray2[x][y][3];
@@ -816,6 +835,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply Bitwise XOR
                 ResultImage[x][y][1] = ImageArray1[x][y][1] ^ ImageArray2[x][y][1];
                 ResultImage[x][y][2] = ImageArray1[x][y][2] ^ ImageArray2[x][y][2];
                 ResultImage[x][y][3] = ImageArray1[x][y][3] ^ ImageArray2[x][y][3];
@@ -834,6 +855,8 @@ public class Demo extends Component implements ActionListener {
         // Image Negative Operation:
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply Negative Linear Transform
                 ImageArray[x][y][1] = 255-ImageArray[x][y][1];  //r
                 ImageArray[x][y][2] = 255-ImageArray[x][y][2];  //g
                 ImageArray[x][y][3] = 255-ImageArray[x][y][3];  //b
@@ -850,10 +873,13 @@ public class Demo extends Component implements ActionListener {
 
         int[][][] ImageArray = convertToArray(img);          //  Convert the image to array
 
+        // Define c such that values are between 0 and 255
         double c = 255 / Math.log10(256);
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply logarithmic function
                 ImageArray[x][y][1] = (int)(c*Math.log10(1 + ImageArray[x][y][1]));  //r
                 ImageArray[x][y][2] = (int)(c*Math.log10(1 + ImageArray[x][y][2]));  //g
                 ImageArray[x][y][3] = (int)(c*Math.log10(1 + ImageArray[x][y][3]));  //b
@@ -870,10 +896,13 @@ public class Demo extends Component implements ActionListener {
 
         int[][][] ImageArray = convertToArray(img);          //  Convert the image to array
 
+        // Define c such that values are between 0 and 255
         double c = 255 / Math.pow(255, p);
 
         for(int y=0; y<height; y++){
             for(int x =0; x<width; x++){
+
+                // Apply Power-Law
                 ImageArray[x][y][1] = (int)(c*Math.pow(ImageArray[x][y][1], p));  //r
                 ImageArray[x][y][2] = (int)(c*Math.pow(ImageArray[x][y][2], p));  //g
                 ImageArray[x][y][3] = (int)(c*Math.pow(ImageArray[x][y][3], p));  //b
@@ -894,6 +923,7 @@ public class Demo extends Component implements ActionListener {
         Random rand = new Random();
         int upperBoundary = 255;
 
+        // Generate random values for LUT
         for(int k=0; k<255; k++){
             LUT[k] = rand.nextInt(upperBoundary);
         }
@@ -925,6 +955,8 @@ public class Demo extends Component implements ActionListener {
 
         for(int y=0; y<height; y++){
             for(int x=0; x<width; x++){
+
+                // Obtain K bitplanes
                 ImageArray[x][y][1] = (ImageArray[x][y][1]>>k)&1;  //r
                 ImageArray[x][y][2] = (ImageArray[x][y][2]>>k)&1;  //g
                 ImageArray[x][y][3] = (ImageArray[x][y][3]>>k)&1;  //b
@@ -965,82 +997,6 @@ public class Demo extends Component implements ActionListener {
 
     // Lab5 exercise 1
     // Finding histogram
-    public BufferedImage apply_hist_equalisation(BufferedImage img){
-        int width = img.getWidth();
-        int height = img.getHeight();
-
-        int[][][] ImageArray = convertToArray(img);
-        int[][][] ResultImage = new int[width][height][4];
-
-        int[] histR = new int[256];
-        int[] histG = new int[256];
-        int[] histB = new int[256];
-
-        double[] nhistR = new double[256];
-        double[] nhistG = new double[256];
-        double[] nhistB = new double[256];
-
-        int[] LUT_histR = new int[256];
-        int[] LUT_histG = new int[256];
-        int[] LUT_histB = new int[256];
-
-        for (int i=0; i<256; i++){
-            histR[i] = 0;
-            histG[i] = 0;
-            histB[i] = 0;
-        }
-
-        // count pixel values
-        for (int y=0; y<height; y++){
-            for (int x=0; x<width; x++){
-                int r = ImageArray[x][y][1];
-                int g = ImageArray[x][y][2];
-                int b = ImageArray[x][y][3];
-
-                histR[r]++;
-                histG[g]++;
-                histB[b]++;
-            }
-        }
-
-        // normalize histogram
-        for (int i=0; i<255; i++){
-            nhistR[i] = (double)histR[i] / (height*width);
-            nhistG[i] = (double)histG[i] / (height*width);
-            nhistB[i] = (double)histB[i] / (height*width);
-        }
-        
-        double cum_r = 0;
-        double cum_g = 0;
-        double cum_b = 0;
-        // Create lookup table/map function
-        for (int i=0; i<256; i++){
-
-            // cumulative distribution
-            cum_r += nhistR[i];
-            cum_g += nhistG[i];
-            cum_b += nhistB[i];
-
-            // multiply cumulative values
-            LUT_histR[i] = (int)(cum_r*255);
-            LUT_histG[i] = (int)(cum_g*255);
-            LUT_histB[i] = (int)(cum_b*255);
-        }
-
-        for (int y=0; y<height; y++){
-            for (int x=0; x<width; x++){
-                int r = ImageArray[x][y][1];
-                int g = ImageArray[x][y][2];
-                int b = ImageArray[x][y][3];
-
-                ResultImage[x][y][1] = LUT_histR[r];
-                ResultImage[x][y][2] = LUT_histG[g];
-                ResultImage[x][y][3] = LUT_histB[b];
-            }
-        }
-        return convertToBimage(ResultImage);
-    }
-
     public int[][] get_hist(BufferedImage img){
         int width = img.getWidth();
         int height = img.getHeight();
@@ -1072,6 +1028,98 @@ public class Demo extends Component implements ActionListener {
         return histogram;
     }
 
+    // Lab5 exercise 2, 3
+    // Histogram normalisation, Histogram Equalisation
+    public BufferedImage apply_hist_equalisation(BufferedImage img){
+        int width = img.getWidth();
+        int height = img.getHeight();
+
+        int[][][] ImageArray = convertToArray(img);
+        int[][][] ResultImage = new int[width][height][4];
+
+        // Get histogram
+        int[][] histogram = get_hist(img);
+        int[] histR = histogram[0];
+        int[] histG = histogram[1];
+        int[] histB = histogram[2];
+
+        double[] nhistR = new double[256];
+        double[] nhistG = new double[256];
+        double[] nhistB = new double[256];
+
+        int[] LUT_histR = new int[256];
+        int[] LUT_histG = new int[256];
+        int[] LUT_histB = new int[256];
+
+        // normalize histogram
+        for (int i=0; i<255; i++){
+            nhistR[i] = (double)histR[i] / (height*width);
+            nhistG[i] = (double)histG[i] / (height*width);
+            nhistB[i] = (double)histB[i] / (height*width);
+        }
+        
+        // Cumulative values
+        double cum_r = 0;
+        double cum_g = 0;
+        double cum_b = 0;
+
+        // Create lookup table/map function
+        for (int i=0; i<256; i++){
+
+            // cumulative distribution
+            cum_r += nhistR[i];
+            cum_g += nhistG[i];
+            cum_b += nhistB[i];
+
+            // multiply cumulative values
+            LUT_histR[i] = (int)(cum_r*255);
+            LUT_histG[i] = (int)(cum_g*255);
+            LUT_histB[i] = (int)(cum_b*255);
+        }
+
+        // Use generated LUT to obtain new pixel values
+        for (int y=0; y<height; y++){
+            for (int x=0; x<width; x++){
+                int r = ImageArray[x][y][1];
+                int g = ImageArray[x][y][2];
+                int b = ImageArray[x][y][3];
+
+                ResultImage[x][y][1] = LUT_histR[r];
+                ResultImage[x][y][2] = LUT_histG[g];
+                ResultImage[x][y][3] = LUT_histB[b];
+            }
+        }
+        return convertToBimage(ResultImage);
+    }
+
+    // Call python script to display histogram
+    public void display_hist(BufferedImage img){
+
+        int[][] histogram = get_hist(img);
+
+        int[] histR = histogram[0];
+        int[] histG = histogram[1];
+        int[] histB = histogram[2];
+
+        String[] command = new String[5];
+
+        // Command for executing python script for displaying histogram
+        command[0]="python";
+        command[1]="display_histogram.py";
+        command[2]=Arrays.toString(histR);
+        command[3]=Arrays.toString(histG);
+        command[4]=Arrays.toString(histB);
+        
+        try {
+            Process p = Runtime.getRuntime().exec(command);
+          }
+          catch(IOException e) {
+            e.printStackTrace();
+          }
+        System.out.println(command);
+    }
+
+
     // Lab6 exercise 1
     // Convolution
     public BufferedImage convolve(BufferedImage img, double[][] mask){
@@ -1090,12 +1138,14 @@ public class Demo extends Component implements ActionListener {
         int max_g = 0;
         int max_b = 0;
 
+        // Slide the kernel window across the image
         for (int y=kernel_size-2; y<height-1; y++){
             for (int x=kernel_size-2; x<width-1; x++){
                 double r=0;
                 double g=0;
                 double b=0;
 
+                // Apply convolution 
                 for (int s=-(kernel_size-2); s<=1; s++){
                     for(int t=-(kernel_size-2); t<=1; t++){
                         r = r + mask[1-s][1-t]*ImageArray[x+s][y+t][1];
@@ -1155,7 +1205,7 @@ public class Demo extends Component implements ActionListener {
             for(int x =0; x<width; x++){
                 double random = rand.nextDouble();
 
-                // 50% chance 
+                // 50% chance for either applying salt or pepper
                 if (random < p/2) {
                     ImageArray[x][y][1] = 255;  //r
                     ImageArray[x][y][2] = 255;  //g
@@ -1192,6 +1242,7 @@ public class Demo extends Component implements ActionListener {
                         int g = ImageArray[x+s][y+t][2];
                         int b = ImageArray[x+s][y+t][3];
 
+                        // Keep track of min values within the target window
                         if (r < min_r){
                             min_r = r;
                         }
@@ -1203,6 +1254,8 @@ public class Demo extends Component implements ActionListener {
                         }
                     }
                 }
+
+                // Use min value of neighborhood
                 ResultImage[x][y][1] = min_r;
                 ResultImage[x][y][2] = min_g;
                 ResultImage[x][y][3] = min_b;
@@ -1233,6 +1286,7 @@ public class Demo extends Component implements ActionListener {
                         int g = ImageArray[x+s][y+t][2];
                         int b = ImageArray[x+s][y+t][3];
 
+                        // Keep track of max values within the target window
                         if (r > max_r){
                             max_r = r;
                         }
@@ -1244,6 +1298,8 @@ public class Demo extends Component implements ActionListener {
                         }
                     }
                 }
+
+                // Use max value of neighborhood
                 ResultImage[x][y][1] = max_r;
                 ResultImage[x][y][2] = max_g;
                 ResultImage[x][y][3] = max_b;
@@ -1276,6 +1332,7 @@ public class Demo extends Component implements ActionListener {
                         int g = ImageArray[x+s][y+t][2];
                         int b = ImageArray[x+s][y+t][3];
 
+                        // Keep track of max values within the target window
                         if (r > max_r){
                             max_r = r;
                         }
@@ -1286,6 +1343,7 @@ public class Demo extends Component implements ActionListener {
                             max_b = b;
                         }
 
+                         // Keep track of min values within the target window
                         if (r < min_r){
                             min_r = r;
                         }
@@ -1297,6 +1355,8 @@ public class Demo extends Component implements ActionListener {
                         }
                     }
                 }
+
+                // Get midpoint between min and max of neighborhood
                 ResultImage[x][y][1] = (max_r + min_r)/2;
                 ResultImage[x][y][2] = (max_g + min_g)/2;
                 ResultImage[x][y][3] = (max_b + min_b)/2;
@@ -1321,6 +1381,7 @@ public class Demo extends Component implements ActionListener {
         for (int y=windowSize-2; y<height-1; y++){
             for (int x=windowSize-2; x<width-1; x++){
                 
+                // count of pixels within neighborhood
                 int k = 0;
 
                 for (int s=-(windowSize-2); s<=1; s++){
@@ -1331,6 +1392,7 @@ public class Demo extends Component implements ActionListener {
                         k++;
                     }
                 }
+                // Sort the array to obtain median value
                 Arrays.sort(rWindow);
                 Arrays.sort(gWindow);
                 Arrays.sort(bWindow);
@@ -1406,6 +1468,7 @@ public class Demo extends Component implements ActionListener {
         for (int y=0; y<height; y++){
             for (int x=0; x<width; x++){
 
+                // Apply simple thresholding
                 if (ImageArray[x][y][1] < threshold){
                     ResultImage[x][y][1] = 0;
                 }
@@ -1429,14 +1492,6 @@ public class Demo extends Component implements ActionListener {
         return convertToBimage(ResultImage);
     }
 
-    public static double mean(double[] p) {
-        double sum = 0;  // sum of all the elements
-        for (int i=0; i<p.length; i++) {
-            sum += p[i];
-        }
-        return sum / p.length;
-    }
-
     // Lab8 exercise 3
     // Automated Thresholding
     public BufferedImage automated_thresholding(BufferedImage img, int automated_threshold){
@@ -1449,6 +1504,7 @@ public class Demo extends Component implements ActionListener {
         double[] background = new double[3];
         double[] object = new double[3];
 
+        // Initialise number of background pixels and object pixels
         int background_pixels = 4;
         int object_pixels = (width*height)-4;
 
@@ -1460,9 +1516,15 @@ public class Demo extends Component implements ActionListener {
         object[1] = 0;
         object[2] = 0;
 
-        double threshold;
-        double new_threshold = 255;
+        // Keep track of old and new threshold values to find the difference, which is used as a stopping criteria for the algorithm
+        double thresholdR = 0;
+        double new_thresholdR = 255;
+        double thresholdG = 0;
+        double new_thresholdG = 255;
+        double thresholdB = 0;
+        double new_thresholdB = 255;
 
+        // Extract sum of object pixel values and background pixel values
         for (int y=0; y<height; y++){
             for (int x=0; x<width; x++){
                 if (x==0 && y==0){
@@ -1495,6 +1557,7 @@ public class Demo extends Component implements ActionListener {
             }
         }
 
+        // get the mean of background and object pixel values
         background[0] = background[0] / background_pixels;
         background[1] = background[1] / background_pixels;
         background[2] = background[2] / background_pixels;
@@ -1502,45 +1565,49 @@ public class Demo extends Component implements ActionListener {
         object[1] = object[1] / object_pixels;
         object[2] = object[2] / object_pixels;
 
-        
-        System.out.println("Background 0: " + mean(background));
-        System.out.println("Object 0: " + mean(object));
-        threshold = (mean(background) + mean(object)) / 2;
+        // get midpoint between background and object mean as initial threshold
+        thresholdR = (background[0] + object[0]) / 2;
+        thresholdG = (background[1] + object[1]) / 2;
+        thresholdB = (background[2] + object[2]) / 2;
 
-        while (Math.abs(new_threshold - threshold) > automated_threshold){
-            threshold = (mean(background) + mean(object)) / 2;
+        // apply automated thresholding until the difference between the threshold is below parameter 'automated_threshold'
+        while ((Math.abs(new_thresholdR - thresholdR) > automated_threshold) && (Math.abs(new_thresholdG - thresholdG) > automated_threshold) && (Math.abs(new_thresholdB - thresholdB) > automated_threshold)){
+            thresholdR = (background[0] + object[0]) / 2;
+            thresholdG = (background[1] + object[1]) / 2;
+            thresholdB = (background[2] + object[2]) / 2;
             background_pixels = 0;
             object_pixels = 0;
 
+            // get new mean of object pixel values andd background pixel values
             for (int y=0; y<height; y++){
                 for (int x=0; x<width; x++){
     
-                    if (ImageArray[x][y][1] < threshold){
+                    if (ImageArray[x][y][1] < thresholdR){
                         ResultImage[x][y][1] = 0;
                         background[0] += ResultImage[x][y][1];
                         background_pixels += 1;
                     }
-                    if (ImageArray[x][y][2] < threshold){
+                    if (ImageArray[x][y][2] < thresholdG){
                         ResultImage[x][y][2] = 0;
                         background[1] += ResultImage[x][y][2];
                         background_pixels += 1;
                     }
-                    if (ImageArray[x][y][3] < threshold){
+                    if (ImageArray[x][y][3] < thresholdB){
                         ResultImage[x][y][3] = 0;
                         background[2] += ResultImage[x][y][3];
                         background_pixels += 1;
                     }
-                    if (ImageArray[x][y][1] >= threshold){
+                    if (ImageArray[x][y][1] >= thresholdR){
                         ResultImage[x][y][1] = 255;
                         object[0] += ResultImage[x][y][1];
                         object_pixels += 1;
                     }
-                    if (ImageArray[x][y][2] >= threshold){
+                    if (ImageArray[x][y][2] >= thresholdG){
                         ResultImage[x][y][2] = 255;
                         object[1] += ResultImage[x][y][2];
                         object_pixels += 1;
                     }
-                    if (ImageArray[x][y][3] >= threshold){
+                    if (ImageArray[x][y][3] >= thresholdB){
                         ResultImage[x][y][3] = 255;
                         object[2] += ResultImage[x][y][3];
                         object_pixels += 1;
@@ -1555,11 +1622,16 @@ public class Demo extends Component implements ActionListener {
             object[1] = object[1] / object_pixels;
             object[2] = object[2] / object_pixels;
 
-            System.out.println("Background: " + mean(background));
-            System.out.println("Object: " + mean(object));
-            new_threshold = (mean(background) + mean(object)) / 2;;
-            System.out.println("Threshold: " + threshold);
-            System.out.println("New Threshold: " + new_threshold);
+            // Obtain new threshold value
+            new_thresholdR = (background[0] + object[0]) / 2;
+            new_thresholdG = (background[1] + object[1]) / 2;
+            new_thresholdB = (background[2] + object[2]) / 2;
+            System.out.println("ThresholdR: " + thresholdR);
+            System.out.println("ThresholdG: " + thresholdG);
+            System.out.println("ThresholdB: " + thresholdB);
+            System.out.println("New ThresholdR: " + new_thresholdR);
+            System.out.println("New ThresholdG: " + new_thresholdG);
+            System.out.println("New ThresholdB: " + new_thresholdB);
         }
         return convertToBimage(ResultImage);
     }
@@ -1586,6 +1658,7 @@ public class Demo extends Component implements ActionListener {
                 std[1] = 0;
                 std[2] = 0;
 
+                // calculate the mean of the target window
                 for (int s=-(windowSize-2); s<=1; s++){
                     for(int t=-(windowSize-2); t<=1; t++){
                         mean[0] += ImageArray[x+s][y+t][1];
@@ -1597,6 +1670,7 @@ public class Demo extends Component implements ActionListener {
                 mean[1] = (mean[1] / (windowSize*windowSize));
                 mean[2] = (mean[2] / (windowSize*windowSize));
                 
+                // calculate std of the target window
                 for (int s=-(windowSize-2); s<=1; s++){
                     for(int t=-(windowSize-2); t<=1; t++){
                         std[0] += Math.pow((ImageArray[x+s][y+t][1]-mean[0]),2);
@@ -1608,6 +1682,8 @@ public class Demo extends Component implements ActionListener {
                 std[1] = Math.sqrt(std[1] / (windowSize*windowSize));
                 std[2] = Math.sqrt(std[2] / (windowSize*windowSize));
 
+
+                // Apply adaptive thresholding algorithm
                 if (ImageArray[x][y][1] <= a*std[0] | ImageArray[x][y][1] <= b*mean[0]){
                     ResultImage[x][y][1] = 0;
                 }
@@ -1657,23 +1733,27 @@ public class Demo extends Component implements ActionListener {
                 biFiltered = ImageNegative(bi); /* Image Negative */
                 return;
         //************************************
+        // Display second image
         case 2: 
                 lastImage = getLastImage();
-                //biFiltered = TwoImages(image_1, image_2);
                 displaySecondImage(image_2);
                 return;
+        // Rescaling
         case 3:
                 lastImage = getLastImage();
                 biFiltered = rescale(biFiltered, scale_value);
                 return;
+        // Value shift
         case 4:
                 lastImage = getLastImage();
                 biFiltered = shift(biFiltered, shift_value);
                 return;
+        // Random value shift
         case 5:
                 lastImage = getLastImage();
-                biFiltered = random_shift(biFiltered);
+                biFiltered = random_shift(biFiltered, maxShift);
                 return;
+        // Apply addition on image_1 and image_2
         case 6:
                 lastImage = getLastImage();
                 try {
@@ -1683,6 +1763,7 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply subtraction on image_2 from image_1
         case 7:
                 lastImage = getLastImage();
                 try {
@@ -1692,6 +1773,7 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply multiplication on image_1 and image_2
         case 8:
                 lastImage = getLastImage();
                 try {
@@ -1701,6 +1783,7 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply division on image_1 and image_2
         case 9:
                 lastImage = getLastImage();
                 try {
@@ -1710,10 +1793,12 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply bitwiseNOT
         case 10:
                 lastImage = getLastImage();
                 biFiltered = bitwiseNOT(biFiltered);
                 return;
+        // Apply bitwiseAND
         case 11:
                 lastImage = getLastImage();
                 try {
@@ -1723,6 +1808,7 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply bitwiseOR
         case 12:
                 lastImage = getLastImage();
                 try {
@@ -1732,6 +1818,7 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply bitwiseXOR
         case 13:
                 lastImage = getLastImage();
                 try {
@@ -1741,125 +1828,159 @@ public class Demo extends Component implements ActionListener {
                     System.out.println("Image could not be read");
                 }
                 return;
+        // Apply Negative Linear Transformation
         case 14:
                 lastImage = getLastImage();
                 biFiltered = MyNegative(biFiltered);
                 return;
+        // Apply Logarithmic Transformation
         case 15:
                 lastImage = getLastImage();
                 biFiltered = LogarithmicOperator(biFiltered);
                 return;
+        // Apply Power-Law Transformation
         case 16:
                 lastImage = getLastImage();
                 biFiltered = PowerLaw(biFiltered, power);
                 return;
+        // Generate Random Look-up Table and apply on image
         case 17:
                 lastImage = getLastImage();
                 biFiltered = RandomLUT(biFiltered);
                 return;
+        // Bit-Plane slicing with kbit
         case 18:
                 lastImage = getLastImage();
                 biFiltered = BitPlane(biFiltered, kbit);
                 return;
+        // Get histogram, normalise, and apply histogram equalisation
         case 19:
                 lastImage = getLastImage();
                 biFiltered = apply_hist_equalisation(biFiltered);
                 return;
+        // Display histogram from python script
         case 20:
                 lastImage = getLastImage();
-                get_hist(biFiltered);
+                display_hist(biFiltered);
                 return;
+        // Apply convolution Averaging Mask
         case 21:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, mean_mask);
                 return;
+        // Apply convolution Weighted Averaging Mask
         case 22:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, weighted_mean_mask);
                 return;
+        // Apply convolution Laplacian with 4-neighbors Mask
         case 23:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Laplacian_4);
                 return;
+        // Apply convolution Laplacian with 8-neighbors Mask
         case 24:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Laplacian_8);
                 return;
+        // Apply convolution Laplacian with 4-neighbors enhancement Mask
         case 25:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, LaplacianEnhancement_4);
                 return;
+        // Apply convolution Laplacian with 8-neighbors enhancement Mask
         case 26:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, LaplacianEnhancement_8);
                 return;
+        // Apply convolution Roberts type 1 Mask
         case 27:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Roberts_1);
                 return;
+        // Apply convolution Roberts type 2 Mask
         case 28:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Roberts_2);
                 return;
+        // Apply convolution Sobel X Mask
         case 29:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Sobel_X);
                 return;
+        // Apply convolution Sobel Y Mask
         case 30:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Sobel_Y);
                 return;
+        // Apply convolution Gaussian Mask
         case 31:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, Gaussian);
                 return;
+        // Apply convolution Laplacian of Gaussian Mask
         case 32:
                 lastImage = getLastImage();
                 biFiltered = convolve(biFiltered, LoG);
                 return;
+        // Add salt and pepper - amount is based on probability
         case 33:
                 lastImage = getLastImage();
                 biFiltered = add_salt_pepper(biFiltered, probability);
                 return;
+        // Apply min filter
         case 34:
                 lastImage = getLastImage();
                 biFiltered = minFilter(biFiltered, minFilterWindow);
                 return;
+        // Apply max filter
         case 35:
                 lastImage = getLastImage();
                 biFiltered = maxFilter(biFiltered, maxFilterWindow);
                 return;
+        // Apply mid-point filter
         case 36:
                 lastImage = getLastImage();
                 biFiltered = midPointFilter(biFiltered, midPointFilterWindow);
                 return;
+        // Apply median filter
         case 37:
                 lastImage = getLastImage();
                 biFiltered = medianFilter(biFiltered, midPointFilterWindow);
                 return;
+        // Compute mean of image using histogram
         case 38:
                 int[] mean = compute_mean(biFiltered);
                 System.out.println(mean[0]);
                 System.out.println(mean[1]);
                 System.out.println(mean[2]);
                 return;
+        // Compute std of image using histogram
         case 39:
                 double[] std = compute_std(biFiltered);
                 System.out.println(std[0]);
                 System.out.println(std[1]);
                 System.out.println(std[2]);
                 return;
+        // Apply simple thresholding 
         case 40:
                 lastImage = getLastImage();
                 biFiltered = simple_thresholding(biFiltered, threshold);
                 return;
+        // Apply automated thresholding
         case 41:
                 lastImage = getLastImage();
                 biFiltered = automated_thresholding(biFiltered, automated_threshold);
                 return;
+        // Apply Adaptive thresholding
         case 42:
                 lastImage = getLastImage();
                 biFiltered = adaptive_thresholding(biFiltered, adaptive_windowSize, adaptive_a, adaptive_b);
+                return;
+        // Dummy state so that previous functions can be applied multiple times
+        case 43:
+                lastImage = getLastImage();
+                biFiltered = biFiltered;
                 return;
         //************************************
 
@@ -1869,26 +1990,6 @@ public class Demo extends Component implements ActionListener {
 
  
      public void actionPerformed(ActionEvent e) {
-        // JComboBox cb = (JComboBox)e.getSource();
-
-         
-        //  if (cb.getActionCommand().equals("SetFilter")) {
-        //      setOpIndex(cb.getSelectedIndex());
-        //      repaint();
-        //  } else if (cb.getActionCommand().equals("Formats")) {
-        //      String format = (String)cb.getSelectedItem();
-        //      File saveFile = new File("savedimage."+format);
-        //      JFileChooser chooser = new JFileChooser();
-        //      chooser.setSelectedFile(saveFile);
-        //      int rval = chooser.showSaveDialog(cb);
-        //      if (rval == JFileChooser.APPROVE_OPTION) {
-        //          saveFile = chooser.getSelectedFile();
-        //          try {
-        //              ImageIO.write(biFiltered, format, saveFile);
-        //          } catch (IOException ex) {
-        //          }
-        //      }
-        //  }
         Object source = e.getSource();
 
         if (source instanceof JComboBox){
